@@ -34,9 +34,11 @@ public class DoctorService {
         String clinicAddress = payload.get("clinicAddress");
         String city = payload.get("city");
         String about = payload.get("about");
-        String district = payload.get("District");
-        String state = payload.get("State");
-        String regNumber = payload.get("RegNumber");
+        String district = payload.getOrDefault("district", payload.get("District"));
+        String state = payload.getOrDefault("state", payload.get("State"));
+        String regNumber = payload.getOrDefault("regNumber", payload.get("RegNumber"));
+
+        String profileImageUrl = payload.get("profileImageUrl");
 
         if (email == null || rawPassword == null || fullname == null || specialization == null) {
             return ApiResponse.error("Required fields missing");
@@ -67,6 +69,7 @@ public class DoctorService {
         doctor.setOtpExpiry(expiry);
         doctor.setOtpUsed(false);
         doctor.setVerified(false);
+        doctor.setProfileImageUrl(profileImageUrl);
 
         doctorRepository.save(doctor);
 

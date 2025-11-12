@@ -1,16 +1,19 @@
-// src/components/auth/UserAuth.jsx
-import React, { useState } from "react";
+import { useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
-import {motion ,  AnimatePresence } from "framer-motion";
-import {OtpVerify} from "../Components/VerifyOTP.component.jsx";
+import { motion, AnimatePresence } from "framer-motion";
+import { OtpVerify } from "../Components/VerifyOTP.component.jsx";
 import logo from "../../assets/Logo.png";
+import axios from "axios";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 export const UserAuth = () => {
   const [state, setState] = useState("signup");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [userEmail, setUserEmail] = useState("");
   const [form, setForm] = useState({
-    fullname: "",
+    username: "",
     email: "",
     password: "",
   });
@@ -19,22 +22,55 @@ export const UserAuth = () => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
-  const formSubmit = (e) => {
+  const formSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setTimeout(() => {
+    try {
+      if (state === "signup") {
+        const response = await axios.post(
+          `${import.meta.env.VITE_BASE_URL}/users/register`,
+          form
+        );
+        if (response.data.status === "success") {
+          setUserEmail(form.email);
+          setState("verify");
+          toast.success("O.T.P sent on your email.");
+        }
+      } else if (state === "login") {
+        const response = await axios.post(
+          `${import.meta.env.VITE_BASE_URL}/users/login`,
+          {
+            email: form.email,
+            password: form.password,
+          }
+        );
+        if (response.data.status === "success") {
+          const token = response.data?.data?.token;
+          localStorage.setItem("token", token);
+          toast.success("Login successful!");
+          setTimeout(() => {
+            window.location.href = "/user-dashboard";
+          }, 1500);
+        } else {
+          toast.error(response.data.message || "Login failed");
+        }
+      }
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || "Something went wrong. Please try again."
+      );
+    } finally {
       setLoading(false);
-      if (state === "signup") setState("verify");
-    }, 1200);
+    }
   };
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center bg-white px-4 py-8 relative overflow-hidden">
       <div className="absolute top-0 left-0">
-        <img src={logo} alt="Zenlat Logo" className="h-40 w-auto object-cover" />
+        <img src={logo} alt="HealthSync Logo" className="h-40 w-auto object-cover" />
       </div>
-
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8 perspective">
+      <ToastContainer position="top-center" autoClose={2000} hideProgressBar />
+      <div className="w-full max-w-md bg-white rounded-2xl border-2 border-blue-600 p-8 perspective">
         <AnimatePresence mode="wait">
           {state !== "verify" ? (
             <motion.div
@@ -48,26 +84,24 @@ export const UserAuth = () => {
                 <h1 className="text-2xl font-semibold text-gray-900 mb-2">
                   {state === "signup" ? "Create your account" : "Sign in"}
                 </h1>
-                <p className="text-sm text-gray-600">
-                  to continue to HeathSync
-                </p>
+                <p className="text-sm text-gray-600">to continue to HealthSync</p>
               </div>
 
               <form onSubmit={formSubmit} className="space-y-6">
                 {state === "signup" && (
                   <div className="relative">
                     <input
-                      name="fullname"
+                      name="username"
                       type="text"
-                      id="fullname"
+                      id="username"
                       onChange={handleForm}
-                      value={form.fullname}
+                      value={form.username}
                       className="peer w-full px-3 py-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 placeholder-transparent"
                       placeholder="Fullname"
                       required
                     />
                     <label
-                      htmlFor="fullname"
+                      htmlFor="username"
                       className="absolute left-3 -top-2.5 px-1 bg-white text-sm font-medium text-gray-600 transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-placeholder-shown:top-4 peer-focus:-top-2.5 peer-focus:text-sm peer-focus:text-blue-600"
                     >
                       Fullname
@@ -111,7 +145,6 @@ export const UserAuth = () => {
                   >
                     Password
                   </label>
-
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
@@ -169,7 +202,7 @@ export const UserAuth = () => {
               exit={{ rotateY: -180, opacity: 0 }}
               transition={{ duration: 0.6 }}
             >
-              <OtpVerify onBack={() => setState("signup")} />
+              <OtpVerify email={userEmail} onBack={() => setState("signup")} />
             </motion.div>
           )}
         </AnimatePresence>

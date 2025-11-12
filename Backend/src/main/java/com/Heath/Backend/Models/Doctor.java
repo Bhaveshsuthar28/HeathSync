@@ -61,6 +61,8 @@ public class Doctor {
 
     private String RegNumber;
 
+    private String profileImageUrl;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 
