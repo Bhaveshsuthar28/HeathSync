@@ -1,6 +1,7 @@
 package com.Heath.Backend.Models;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -53,15 +54,17 @@ public class Doctor {
 
     private String city;       
 
-    private String District;   
-
-    private String State;
+    private String state;
 
     private String about;
 
     private String RegNumber;
 
     private String profileImageUrl;
+
+    private LocalTime clinicOpenTime;
+
+    private LocalTime clinicCloseTime;
 
     @CreationTimestamp
     private LocalDateTime createdAt;

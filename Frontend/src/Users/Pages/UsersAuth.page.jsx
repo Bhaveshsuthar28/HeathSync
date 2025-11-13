@@ -6,6 +6,7 @@ import logo from "../../assets/Logo.png";
 import axios from "axios";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import {useNavigate} from "react-router-dom"
 
 export const UserAuth = () => {
   const [state, setState] = useState("signup");
@@ -17,6 +18,7 @@ export const UserAuth = () => {
     email: "",
     password: "",
   });
+  const navigate = useNavigate();
 
   const handleForm = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -49,7 +51,7 @@ export const UserAuth = () => {
           localStorage.setItem("token", token);
           toast.success("Login successful!");
           setTimeout(() => {
-            window.location.href = "/user-dashboard";
+            navigate("/user-home")
           }, 1500);
         } else {
           toast.error(response.data.message || "Login failed");

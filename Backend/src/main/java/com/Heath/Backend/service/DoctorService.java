@@ -1,9 +1,13 @@
 package com.Heath.Backend.service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -34,7 +38,6 @@ public class DoctorService {
         String clinicAddress = payload.get("clinicAddress");
         String city = payload.get("city");
         String about = payload.get("about");
-        String district = payload.getOrDefault("district", payload.get("District"));
         String state = payload.getOrDefault("state", payload.get("State"));
         String regNumber = payload.getOrDefault("regNumber", payload.get("RegNumber"));
 
@@ -62,7 +65,6 @@ public class DoctorService {
         doctor.setClinicAddress(clinicAddress);
         doctor.setCity(city);
         doctor.setAbout(about);
-        doctor.setDistrict(district);
         doctor.setState(state);
         doctor.setOtpCode(otp);
         doctor.setRegNumber(regNumber);
@@ -123,4 +125,49 @@ public class DoctorService {
 
         return ApiResponse.success("Login successful", Map.of("token", token));
     }
+
+    public ApiResponse<Object> recommendByCity(String token, String city, int page, int size) {
+        String email = jwtUtil.extractEmail(token);
+        if (email == null) return ApiResponse.error("Invalid token");
+
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Doctor> result = doctorRepository
+                .findByCityIgnoreCaseAndVerifiedTrue(city, pageable);
+
+        List<Doctor> safeList = sanitizeDoctors(result.getContent());
+
+        return ApiResponse.success("City-based recommended doctors", Map.of(
+                "doctors", safeList,
+                "page", result.getNumber(),
+                "totalPages", result.getTotalPages()
+        ));
+    }
+
+    public ApiResponse<Object> recommendByState(String token, String state, int page, int size) {
+        String email = jwtUtil.extractEmail(token);
+        if (email == null) return ApiResponse.error("Invalid token");
+
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Doctor> result = doctorRepository
+                .findByStateIgnoreCaseAndVerifiedTrue(state, pageable);
+
+        List<Doctor> safeList = sanitizeDoctors(result.getContent());
+
+        return ApiResponse.success("State-based recommended doctors", Map.of(
+                "doctors", safeList,
+                "page", result.getNumber(),
+                "totalPages", result.getTotalPages()
+        ));
+    }
+
+    private List<Doctor> sanitizeDoctors(List<Doctor> list) {
+        return list.stream().map(doc -> {
+            doc.setPassword(null);
+            doc.setOtpCode(null);
+            doc.setOtpExpiry(null);
+            doc.setOtpUsed(false);
+            return doc;
+        }).toList();
+    }
+
 }

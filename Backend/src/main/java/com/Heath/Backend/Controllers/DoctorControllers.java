@@ -102,4 +102,8 @@ public class DoctorControllers {
             return ResponseEntity.status(500).body(ApiResponse.error("Something went wrong"));
         }
     }
+
+    
+
+
 }

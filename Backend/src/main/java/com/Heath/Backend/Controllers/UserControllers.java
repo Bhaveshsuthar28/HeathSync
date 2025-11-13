@@ -10,12 +10,14 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.Heath.Backend.Models.User;
 import com.Heath.Backend.Repository.UserRepository;
 import com.Heath.Backend.Utils.ApiResponse;
 import com.Heath.Backend.Utils.JwtUtil;
+import com.Heath.Backend.service.DoctorService;
 import com.Heath.Backend.service.UsersService;
 
 import jakarta.validation.Valid;
@@ -30,6 +32,7 @@ public class UserControllers {
     private final UsersService usersService;
     private final JwtUtil jwtUtil;
     private final UserRepository userRepository;
+    private final DoctorService doctorService;
 
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<Object>> Userregister(@Valid @RequestBody Map<String , String> payload){
@@ -85,5 +88,37 @@ public class UserControllers {
         } catch (Exception e) {
             return ResponseEntity.status(500).body(ApiResponse.error("Something went wrong"));
         }
+    }
+
+    @GetMapping("/recommend/city")
+    public ResponseEntity<ApiResponse<Object>> recommendByCity(
+        @RequestHeader("Authorization") String authHeader,
+        @RequestParam("city") String city,
+        @RequestParam(value = "page", defaultValue = "0") int page,
+        @RequestParam(value = "size", defaultValue = "10") int size
+    ) {
+        if (!authHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(401).body(ApiResponse.error("Invalid token"));
+        }
+
+        String token = authHeader.substring(7);
+        ApiResponse<Object> response = doctorService.recommendByCity(token, city, page, size);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/recommend/state")
+    public ResponseEntity<ApiResponse<Object>> recommendByState(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestParam("state") String state,
+            @RequestParam(value = "page", defaultValue = "0") int page,
+            @RequestParam(value = "size", defaultValue = "10") int size
+    ) {
+        if (!authHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(401).body(ApiResponse.error("Invalid token"));
+        }
+
+        String token = authHeader.substring(7);
+        ApiResponse<Object> response = doctorService.recommendByState(token, state, page, size);
+        return ResponseEntity.ok(response);
     }
 }

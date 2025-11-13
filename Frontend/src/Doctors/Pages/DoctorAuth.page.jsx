@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState} from "react";
 import axios from "axios";
-import { Eye, EyeOff } from "lucide-react";
+import { State, City } from "country-state-city";
+import { Eye, EyeOff , MapPin , Clock} from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -13,6 +14,7 @@ export const DoctorAuth = () => {
   const [state, setState] = useState("signup");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [geoLoading, setGeoLoading] = useState(false);
   const [doctorEmail, setDoctorEmail] = useState("");
   const navigate = useNavigate();
 
@@ -25,7 +27,8 @@ export const DoctorAuth = () => {
     clinicName: "",
     clinicAddress: "",
     city: "",
-    district: "",
+    clinicOpenTime: "",
+    clinicCloseTime: "",
     state: "",
     about: "",
     regNumber: "",
@@ -41,6 +44,15 @@ export const DoctorAuth = () => {
   const handleFileChange = (e) => {
     const file = e.target.files?.[0] ?? null;
     setForm((prev) => ({ ...prev, profileImage: file }));
+  };
+
+  const indianStates = State.getStatesOfCountry("IN");
+  const selectedState = indianStates.find((s) => s.name === form.state);
+  const cities = selectedState ? City.getCitiesOfState("IN", selectedState.isoCode) : [];
+
+  const handleStateChange = (e) => {
+    const selected = e.target.value;
+    setForm((p) => ({ ...p, state: selected, city: "" }));
   };
 
   const handleSignup = async (e) => {
@@ -94,16 +106,73 @@ export const DoctorAuth = () => {
         toast.success("Login successful");
         setTimeout(() => {
           navigate("/doctor-home");
+          setLoading(false);
         }, 1200);
       } else {
         toast.error(res.data?.message || "Login failed");
+        setLoading(false);
       }
     } catch (err) {
       toast.error(err.response?.data?.message || "Login error");
-    } finally {
       setLoading(false);
     }
   };
+
+  const handleUseCurrentLocation = async () => {
+    if (geoLoading || form.clinicAddress) return;
+
+    if (!navigator.geolocation) {
+      toast.error("Geolocation is not supported.");
+      return;
+    }
+    setGeoLoading(true);
+      navigator.geolocation.getCurrentPosition(
+        async ({ coords }) => {
+          try {
+            const res = await fetch(
+              `https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.latitude}&lon=${coords.longitude}`
+            );
+            if (!res.ok) {
+              throw new Error("Reverse geocoding failed");
+            }
+            const data = await res.json();
+            const address = data?.display_name ?? "";
+            const addrDetails = data?.address ?? {};
+            const cityValue =
+              addrDetails.city ||
+              addrDetails.town ||
+              addrDetails.village ||
+              addrDetails.suburb ||
+              "";
+
+            setForm((prev) => ({
+              ...prev,
+              clinicAddress: prev.clinicAddress || address,
+              city: prev.city || cityValue,
+            }));
+
+            if (!cityValue) {
+              toast.info("Location fetched, but city name was not available.");
+            } else {
+              toast.success("Clinic address updated from current location.");
+            }
+          } catch (error) {
+            toast.error("Unable to fetch location details." , error.message);
+          } finally {
+            setGeoLoading(false);
+          }
+        },
+        (error) => {
+          const message =
+            error.code === error.PERMISSION_DENIED
+              ? "Location permission denied."
+              : "Unable to fetch current location.";
+          toast.error(message);
+          setGeoLoading(false);
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    };
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-white p-6">
@@ -195,6 +264,57 @@ export const DoctorAuth = () => {
                           </div>
                         </div>
 
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="relative">
+                            <select
+                              name="state"
+                              id="state"
+                              value={form.state}
+                              onChange={handleStateChange}
+                              className="peer w-full px-3 py-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 bg-white"
+                              required
+                            >
+                              <option value="">Select State</option>
+                              {indianStates.map((s) => (
+                                <option key={s.isoCode} value={s.name}>
+                                  {s.name}
+                                </option>
+                              ))}
+                            </select>
+                            <label
+                              htmlFor="state"
+                              className="absolute left-3 -top-2.5 px-1 bg-white text-sm text-gray-600 transition-all peer-focus:text-blue-600"
+                            >
+                              State
+                            </label>
+                          </div>
+
+                          <div className="relative">
+                            <select
+                              name="city"
+                              id="city"
+                              value={form.city}
+                              onChange={handleForm}
+                              className="peer w-full px-3 py-4 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 bg-white"
+                              disabled={!form.state}
+                              required
+                            >
+                              <option value="">Select City</option>
+                              {cities.map((c) => (
+                                <option key={c.name} value={c.name}>
+                                  {c.name}
+                                </option>
+                              ))}
+                            </select>
+                            <label
+                              htmlFor="city"
+                              className="absolute left-3 -top-2.5 px-1 bg-white text-sm text-gray-600 transition-all peer-focus:text-blue-600"
+                            >
+                              City
+                            </label>
+                          </div>
+                        </div>
+
                         <div className="relative">
                           <input
                             name="clinicName"
@@ -218,7 +338,7 @@ export const DoctorAuth = () => {
                             id="clinicAddress"
                             value={form.clinicAddress}
                             onChange={handleForm}
-                            className="peer w-full px-3 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 placeholder-transparent"
+                            className="peer w-full px-3 py-3 pr-12 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 placeholder-transparent"
                             placeholder="Clinic Address"
                           />
                           <label
@@ -227,59 +347,78 @@ export const DoctorAuth = () => {
                           >
                             Clinic Address
                           </label>
+                          {!form.clinicAddress && (
+                            <button
+                              type="button"
+                              onClick={handleUseCurrentLocation}
+                              disabled={geoLoading}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-600 hover:text-blue-700 disabled:opacity-60"
+                              title="Use current location"
+                            >
+                              <MapPin className="w-5 h-5" />
+                            </button>
+                          )}
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
                           <div className="relative">
                             <input
-                              name="city"
-                              id="city"
-                              value={form.city}
+                              type="time"
+                              id="clinicOpenTime"
+                              name="clinicOpenTime"
+                              value={form.clinicOpenTime}
                               onChange={handleForm}
-                              className="peer w-full px-3 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 placeholder-transparent"
-                              placeholder="City"
+                              className="peer w-full px-3 py-3 pr-10 border border-gray-300 rounded-md
+                                        focus:outline-none focus:ring-2 focus:ring-blue-600
+                                        placeholder-transparent"
+                              placeholder="Clinic Opens"
+                              required
                             />
+
                             <label
-                              htmlFor="city"
-                              className="absolute left-3 -top-2.5 px-1 bg-white text-sm text-gray-600 transition-all peer-placeholder-shown:top-3 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-focus:-top-2.5 peer-focus:text-sm peer-focus:text-blue-600"
+                              htmlFor="clinicOpenTime"
+                              className="absolute left-3 -top-2.5 px-1 bg-white text-sm text-gray-600
+                                        transition-all
+                                        peer-placeholder-shown:top-3 
+                                        peer-placeholder-shown:text-base 
+                                        peer-placeholder-shown:text-gray-400 
+                                        peer-focus:-top-2.5 peer-focus:text-sm peer-focus:text-blue-600"
                             >
-                              City
+                              Clinic opens
                             </label>
+
+                            <Clock className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-600 w-5 h-5 pointer-events-none" />
                           </div>
 
                           <div className="relative">
                             <input
-                              name="district"
-                              id="district"
-                              value={form.district}
+                              type="time"
+                              id="clinicCloseTime"
+                              name="clinicCloseTime"
+                              value={form.clinicCloseTime}
                               onChange={handleForm}
-                              className="peer w-full px-3 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 placeholder-transparent"
-                              placeholder="District"
+                              className="peer w-full px-3 py-3 pr-10 border border-gray-300 rounded-md
+                                        focus:outline-none focus:ring-2 focus:ring-blue-600
+                                        placeholder-transparent"
+                              placeholder="Clinic Closes"
+                              required
                             />
+
                             <label
-                              htmlFor="district"
-                              className="absolute left-3 -top-2.5 px-1 bg-white text-sm text-gray-600 transition-all peer-placeholder-shown:top-3 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-focus:-top-2.5 peer-focus:text-sm peer-focus:text-blue-600"
+                              htmlFor="clinicCloseTime"
+                              className="absolute left-3 -top-2.5 px-1 bg-white text-sm text-gray-600
+                                        transition-all
+                                        peer-placeholder-shown:top-3 
+                                        peer-placeholder-shown:text-base 
+                                        peer-placeholder-shown:text-gray-400 
+                                        peer-focus:-top-2.5 peer-focus:text-sm peer-focus:text-blue-600"
                             >
-                              District
+                              Clinic closes
                             </label>
+
+                            <Clock className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-600 w-5 h-5 pointer-events-none" />
                           </div>
 
-                          <div className="relative">
-                            <input
-                              name="state"
-                              id="state"
-                              value={form.state}
-                              onChange={handleForm}
-                              className="peer w-full px-3 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 placeholder-transparent"
-                              placeholder="State"
-                            />
-                            <label
-                              htmlFor="state"
-                              className="absolute left-3 -top-2.5 px-1 bg-white text-sm text-gray-600 transition-all peer-placeholder-shown:top-3 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-focus:-top-2.5 peer-focus:text-sm peer-focus:text-blue-600"
-                            >
-                              State
-                            </label>
-                          </div>
                         </div>
 
                         <div className="relative">
@@ -323,9 +462,10 @@ export const DoctorAuth = () => {
                             accept="image/*"
                             onChange={handleFileChange}
                             className="block w-full text-sm text-gray-600 border border-gray-300 rounded-md cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-600"
+                            required
                           />
                           <p className="text-xs text-gray-500 mt-1">
-                            Upload profile photo (optional)
+                            Upload profile photo (required)
                           </p>
                         </div>
                       </>
