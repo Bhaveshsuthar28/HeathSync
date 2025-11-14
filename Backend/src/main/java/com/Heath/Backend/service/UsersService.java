@@ -95,4 +95,35 @@ public class UsersService {
 
         return ApiResponse.success("Login successful", Map.of("token", token));
     }
+
+    public ApiResponse<Object> updateUserProfile(String email, Map<String, Object> payload){
+        User user = userRepository.findByEmail(email).orElse(null);
+        if(user == null) return ApiResponse.error("User not Found");
+
+        String userName = (String) payload.get("userName");
+        String gender = (String) payload.get("gender");
+        String city = (String) payload.get("city");
+        String state = (String) payload.get("state");
+        String profileImageUrl = (String) payload.get("profileImageUrl");
+
+        if(userName !=null && !userName.isBlank()){
+            if(userRepository.existsByUserName(userName) && !user.getUserName().equals(userName)){
+                return ApiResponse.error("This name is already used");
+            }
+
+            user.setUserName(userName);
+        }
+
+        if (gender != null) user.setGender(gender);
+        if (city != null) user.setCity(city);
+        if (state != null) user.setState(state);
+        if (profileImageUrl != null) user.setProfileImageUrl(profileImageUrl);
+
+        userRepository.save(user);
+
+        user.setPassword(null);
+
+        return ApiResponse.success("Profile updated successfully", user);
+    }
+
 }

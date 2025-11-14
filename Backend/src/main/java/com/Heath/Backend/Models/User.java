@@ -48,6 +48,14 @@ public class User {
     
     private boolean otpUsed = false;
 
+    private String gender;
+
+    private String city;
+
+    private String state;
+    
+    private String profileImageUrl;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 

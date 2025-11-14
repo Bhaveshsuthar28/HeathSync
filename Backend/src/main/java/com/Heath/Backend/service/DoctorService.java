@@ -170,4 +170,35 @@ public class DoctorService {
         }).toList();
     }
 
+
+    public ApiResponse<Object> recommendDoctorAdvanced(
+        String token,
+        String city,
+        String state,
+        String specialization,
+        int page,
+        int size
+    ) {
+        String email = jwtUtil.extractEmail(token);
+        if (email == null) return ApiResponse.error("Invalid token");
+
+        Pageable pageable = PageRequest.of(page, size);
+
+        Page<Doctor> result = doctorRepository
+                .findByCityIgnoreCaseAndStateIgnoreCaseAndSpecializationIgnoreCaseAndVerifiedTrue(
+                        city,
+                        state,
+                        specialization,
+                        pageable
+                );
+
+        List<Doctor> safeList = sanitizeDoctors(result.getContent());
+
+        return ApiResponse.success("Filtered doctor list", Map.of(
+                "doctors", safeList,
+                "page", result.getNumber(),
+                "totalPages", result.getTotalPages()
+        ));
+    }
+
 }
