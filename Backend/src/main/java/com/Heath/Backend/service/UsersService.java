@@ -101,10 +101,8 @@ public class UsersService {
         if(user == null) return ApiResponse.error("User not Found");
 
         String userName = (String) payload.get("userName");
-        String gender = (String) payload.get("gender");
         String city = (String) payload.get("city");
         String state = (String) payload.get("state");
-        String profileImageUrl = (String) payload.get("profileImageUrl");
 
         if(userName !=null && !userName.isBlank()){
             if(userRepository.existsByUserName(userName) && !user.getUserName().equals(userName)){
@@ -114,10 +112,8 @@ public class UsersService {
             user.setUserName(userName);
         }
 
-        if (gender != null) user.setGender(gender);
         if (city != null) user.setCity(city);
         if (state != null) user.setState(state);
-        if (profileImageUrl != null) user.setProfileImageUrl(profileImageUrl);
 
         userRepository.save(user);
 

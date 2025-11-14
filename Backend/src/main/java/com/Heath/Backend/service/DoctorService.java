@@ -1,11 +1,16 @@
 package com.Heath.Backend.service;
 
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.Set;
 
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.ResponseEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -201,4 +206,52 @@ public class DoctorService {
         ));
     }
 
+
+    public ApiResponse<Object> updateDoctorProfile(String email, Map<String, String> data){
+        Doctor doctor = doctorRepository.findByEmail(email).orElse(null);
+        if (doctor == null) return ApiResponse.error("Doctor not found");
+
+        data.remove("email");
+        data.remove("specialization");
+        data.remove("role");
+
+        if (data.containsKey("password")) {
+            String newPass = data.get("password");
+            if (newPass != null && !newPass.isBlank()) {
+                doctor.setPassword(passwordEncoder.encode(newPass));
+            }
+        }
+
+        if (data.containsKey("fullname")) doctor.setFullname(data.get("fullname"));
+        if (data.containsKey("clinicName")) doctor.setClinicName(data.get("clinicName"));
+        if (data.containsKey("clinicAddress")) doctor.setClinicAddress(data.get("clinicAddress"));
+        if (data.containsKey("city")) doctor.setCity(data.get("city"));
+        if (data.containsKey("state")) doctor.setState(data.get("state"));
+        if (data.containsKey("about")) doctor.setAbout(data.get("about"));
+
+        if (data.containsKey("clinicOpenTime")) {
+            doctor.setClinicOpenTime(LocalTime.parse(data.get("clinicOpenTime")));
+        }
+
+        if (data.containsKey("clinicCloseTime")) {
+            doctor.setClinicCloseTime(LocalTime.parse(data.get("clinicCloseTime")));
+        }
+
+        if (data.containsKey("workingDays")) {
+            Set<String> days = new HashSet<>(Arrays.asList(data.get("workingDays").split(",")));
+            doctor.setWorkingDays(days);
+        }
+
+        if (data.containsKey("profileImageUrl")) {
+            doctor.setProfileImageUrl(data.get("profileImageUrl"));
+        }
+
+        doctorRepository.save(doctor);
+
+        doctor.setPassword(null);
+        doctor.setOtpCode(null);
+        doctor.setOtpExpiry(null);
+
+        return ApiResponse.success("Profile updated successfully", doctor);
+    }
 }

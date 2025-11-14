@@ -4,7 +4,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class HeathSyncBackend { 
+public class HeathSyncBackend {  
 
 	public static void main(String[] args) {
 		SpringApplication.run(HeathSyncBackend.class, args);

@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.Heath.Backend.Models.Appointment;
 import com.Heath.Backend.Models.Doctor;
+import com.Heath.Backend.Models.User;
 import com.Heath.Backend.Models.Appointment.Status;
 import com.Heath.Backend.Repository.AppointmentRepository;
 import com.Heath.Backend.Repository.DoctorCloseDateRepository;
@@ -19,7 +20,6 @@ import com.Heath.Backend.Repository.UserRepository;
 import com.Heath.Backend.Utils.ApiResponse;
 import com.Heath.Backend.Utils.EmailUtil;
 
-import jakarta.validation.constraints.Null;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -61,8 +61,8 @@ public class AppointmentService {
         Integer duration = payload.get("durationMinutes") != null ? Integer.parseInt(payload.get("durationMinutes")) : 30;
         String message = payload.get("message");
 
-        Optional<com.Heath.Backend.Models.User> patientOpt = userRepository.findByEmail(patientEmail);
-        com.Heath.Backend.Models.User patient = patientOpt.orElse(null);
+        Optional<User> patientOpt = userRepository.findByEmail(patientEmail);
+        User patient = patientOpt.orElse(null);
         if (patient == null) return ApiResponse.error("Patient not found");
 
         Optional<Doctor> doctorOpt = doctorRepository.findById(doctorId);

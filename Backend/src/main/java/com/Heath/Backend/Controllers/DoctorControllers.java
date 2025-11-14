@@ -7,6 +7,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -103,7 +104,20 @@ public class DoctorControllers {
         }
     }
 
-    
+    @PatchMapping(value = "/update" , consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<Object>> updateProfile(@RequestHeader("Authorization") String authHeader, @RequestParam Map<String, String> fields, @RequestParam(value = "profileImage", required = false) MultipartFile profileImage){
+        try {
+            if (profileImage != null && !profileImage.isEmpty()) {
+                String imageUrl = cloudinaryService.uploadFile(profileImage);
+                fields.put("profileImageUrl", imageUrl);
+            }
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(ApiResponse.error("Image upload failed"));
+        }
 
+        String email = jwtUtil.extractEmail(authHeader.substring(7));
+        ApiResponse<Object> response = doctorService.updateDoctorProfile(email, fields);
 
+        return ResponseEntity.ok(response);
+    }
 }
