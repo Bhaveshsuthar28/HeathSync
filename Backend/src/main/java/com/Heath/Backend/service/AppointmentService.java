@@ -98,8 +98,8 @@ public class AppointmentService {
         }
 
         Appointment appointment = new Appointment();
-        appointment.setDoctorId(doctorId);
-        appointment.setPatientId(patient.getId());
+        appointment.setDoctor(doctor);
+        appointment.setPatient(patient);
         appointment.setScheduledAt(scheduledAt);
         appointment.setDurationMinutes(duration);
         appointment.setMessage(message);
@@ -112,7 +112,7 @@ public class AppointmentService {
         appointment.setMaxOtpAttempts(3);
         appointment.setStatus(Status.PENDING);
 
-        appointmentRepository.save(appointment);
+        Appointment saved = appointmentRepository.save(appointment);
 
         String subject = "Your appointment OTP";
         String body = "Your OTP for appointment with Dr. " + doctor.getFullname() + " on " + scheduledAt.toString() +
@@ -121,8 +121,7 @@ public class AppointmentService {
         emailUtil.sendSimpleEmail(patient.getEmail(), subject, body);
 
         Map<String, Object> resp = new HashMap<>();
-        resp.put("appointmentId", appointment.getId());
-        resp.put("scheduledAt", appointment.getScheduledAt());
+        resp.put("appointment", sanitize(saved));
         resp.put("otpSent", true);
 
         if (isDevMode()) resp.put("devOtp", otp);
@@ -136,10 +135,10 @@ public class AppointmentService {
         if (opt.isEmpty()) return ApiResponse.error("Appointment not found");
         Appointment appointment = opt.get();
 
-        Optional<com.Heath.Backend.Models.User> p = userRepository.findByEmail(patientEmail);
-        com.Heath.Backend.Models.User patient = p.orElse(null);
+        Optional<User> p = userRepository.findByEmail(patientEmail);
+        User patient = p.orElse(null);
 
-        if (patient == null || !patient.getId().equals(appointment.getPatientId())) return ApiResponse.error("Not authorized");
+        if (patient == null || !patient.getId().equals(appointment.getPatient().getId())) return ApiResponse.error("Not authorized");
 
         if (appointment.getStatus() != Status.PENDING) return ApiResponse.error("Only pending appointments can receive OTP");
 
@@ -153,8 +152,10 @@ public class AppointmentService {
         appointment.setOtpAttempts(0);
         appointmentRepository.save(appointment);
 
-        Optional<Doctor> docOpt = doctorRepository.findById(appointment.getDoctorId());
-        Doctor doctor = docOpt.orElse(null);
+        Doctor doctor = null;
+        if (appointment.getDoctor() != null) {
+            doctor = appointment.getDoctor();
+        }
 
         String subject = "Your appointment OTP (resend)";
         String body = "Your new OTP for appointment with Dr. " + (doctor != null ? doctor.getFullname() : "") +
@@ -179,7 +180,7 @@ public class AppointmentService {
         Appointment appointment = appointmentRepository.findByIdForUpdate(appointmentId);
         if (appointment == null) return ApiResponse.error("Appointment not found");
 
-        if (!appointment.getDoctorId().equals(doctor.getId())) return ApiResponse.error("Not authorized");
+        if (!appointment.getDoctor().getId().equals(doctor.getId())) return ApiResponse.error("Not authorized");
 
         if (appointment.getStatus() != Status.PENDING) {
             return ApiResponse.error("Appointment not in pending state");
@@ -212,8 +213,8 @@ public class AppointmentService {
         appointment.setResolvedAt(LocalDateTime.now());
         appointmentRepository.save(appointment);
 
-        Optional<com.Heath.Backend.Models.User> patientOpt = userRepository.findById(appointment.getPatientId());
-        com.Heath.Backend.Models.User patient = patientOpt.orElse(null);
+        Optional<User> patientOpt = userRepository.findById(appointment.getPatient().getId());
+        User patient = patientOpt.orElse(null);
 
         if (patient != null) {
             String sub = "Appointment completed";
@@ -221,7 +222,7 @@ public class AppointmentService {
             emailUtil.sendSimpleEmail(patient.getEmail(), sub, body);
         }
 
-        return ApiResponse.success("Appointment resolved successfully", Map.of("appointmentId", appointment.getId()));
+        return ApiResponse.success("Appointment resolved successfully", Map.of("appointment", sanitize(appointment)));
     }
 
     @Transactional
@@ -230,14 +231,14 @@ public class AppointmentService {
         if (appointmentOpt.isEmpty()) return ApiResponse.error("Appointment not found");
         Appointment appointment = appointmentOpt.get();
 
-        Optional<com.Heath.Backend.Models.User> userOpt = userRepository.findByEmail(requesterEmail);
-        com.Heath.Backend.Models.User user = userOpt.orElse(null);
+        Optional<User> userOpt = userRepository.findByEmail(requesterEmail);
+        User user = userOpt.orElse(null);
 
         Optional<Doctor> doctorOpt = doctorRepository.findByEmail(requesterEmail);
         Doctor doctor = doctorOpt.orElse(null);
 
-        boolean isPatient = user != null && user.getId().equals(appointment.getPatientId());
-        boolean isDoctor = doctor != null && doctor.getId().equals(appointment.getDoctorId());
+        boolean isPatient = user != null && user.getId().equals(appointment.getPatient().getId());
+        boolean isDoctor = doctor != null && appointment.getDoctor() != null && doctor.getId().equals(appointment.getDoctor().getId());
 
         if (!isPatient && !isDoctor) return ApiResponse.error("Not authorized to cancel this appointment");
 
@@ -251,52 +252,56 @@ public class AppointmentService {
         appointmentRepository.save(appointment);
 
         if (isDoctor) {
-            Optional<com.Heath.Backend.Models.User> pat = userRepository.findById(appointment.getPatientId());
-            com.Heath.Backend.Models.User p = pat.orElse(null);
+            Optional<User> pat = userRepository.findById(appointment.getPatient().getId());
+            User p = pat.orElse(null);
             if (p != null) {
                 emailUtil.sendSimpleEmail(
                         p.getEmail(),
                         "Appointment cancelled by doctor",
-                        "Your appointment with Dr. " + doctor.getFullname() + " was cancelled. Reason: " + reason
+                        "Your appointment with Dr. " + doctor.getFullname() + " was cancelled.\n\nReason: " + reason
                 );
             }
         } else {
-            Optional<Doctor> d = doctorRepository.findById(appointment.getDoctorId());
+            Optional<Doctor> d = doctorRepository.findById(appointment.getDoctor().getId());
             Doctor doc = d.orElse(null);
             if (doc != null) {
                 emailUtil.sendSimpleEmail(
                         doc.getEmail(),
                         "Appointment cancelled by patient",
-                        "Appointment with patient id " + appointment.getPatientId() + " was cancelled. Reason: " + reason
+                        "Appointment with patient Name " + appointment.getPatient().getUserName() + " was cancelled.\n\nReason: " + reason
                 );
             }
         }
 
-        return ApiResponse.success("Appointment cancelled", Map.of("appointmentId", appointment.getId()));
+        return ApiResponse.success("Appointment cancelled", Map.of("appointment", sanitize(appointment)));
     }
 
     public ApiResponse<Object> getPatientUpcoming(String patientEmail, int page, int size) {
-        Optional<com.Heath.Backend.Models.User> patientOpt = userRepository.findByEmail(patientEmail);
-        com.Heath.Backend.Models.User patient = patientOpt.orElse(null);
+        Optional<User> patientOpt = userRepository.findByEmail(patientEmail);
+        User patient = patientOpt.orElse(null);
         if (patient == null) return ApiResponse.error("Patient not found");
 
         Pageable pageable = PageRequest.of(page, size);
-        Page<Appointment> result = appointmentRepository.findByPatientIdAndStatusAndScheduledAtAfterOrderByScheduledAtAsc(
+        Page<Appointment> result = appointmentRepository.findByPatient_IdAndStatusAndScheduledAtAfterOrderByScheduledAtAsc(
                 patient.getId(), Status.PENDING, LocalDateTime.now(), pageable);
 
-        return ApiResponse.success("Upcoming appointments", Map.of("appointments", result.getContent(), "page", result.getNumber(), "totalPages", result.getTotalPages()));
+        List<Appointment> sanitized = result.getContent().stream().map(this::sanitize).toList();
+
+        return ApiResponse.success("Upcoming appointments", Map.of("appointments", sanitized, "page", result.getNumber(), "totalPages", result.getTotalPages()));
     }
 
     public ApiResponse<Object> getPatientHistory(String patientEmail, int page, int size) {
-        Optional<com.Heath.Backend.Models.User> patientOpt = userRepository.findByEmail(patientEmail);
-        com.Heath.Backend.Models.User patient = patientOpt.orElse(null);
+        Optional<User> patientOpt = userRepository.findByEmail(patientEmail);
+        User patient = patientOpt.orElse(null);
         if (patient == null) return ApiResponse.error("Patient not found");
 
         Pageable pageable = PageRequest.of(page, size);
-        Page<Appointment> result = appointmentRepository.findByPatientIdAndStatusInOrderByScheduledAtDesc(
+        Page<Appointment> result = appointmentRepository.findByPatient_IdAndStatusInOrderByScheduledAtDesc(
                 patient.getId(), List.of(Status.RESOLVED, Status.CANCELLED, Status.OTP_LOCKED), pageable);
 
-        return ApiResponse.success("Appointment history", Map.of("appointments", result.getContent(), "page", result.getNumber(), "totalPages", result.getTotalPages()));
+        List<Appointment> sanitized = result.getContent().stream().map(this::sanitize).toList();
+
+        return ApiResponse.success("Appointment history", Map.of("appointments", sanitized, "page", result.getNumber(), "totalPages", result.getTotalPages()));
     }
 
     public ApiResponse<Object> getDoctorUpcoming(String doctorEmail, int page, int size) {
@@ -305,10 +310,12 @@ public class AppointmentService {
         if (doctor == null) return ApiResponse.error("Doctor not found");
 
         Pageable pageable = PageRequest.of(page, size);
-        Page<Appointment> result = appointmentRepository.findByDoctorIdAndStatusAndScheduledAtAfterOrderByScheduledAtAsc(
+        Page<Appointment> result = appointmentRepository.findByDoctor_IdAndStatusAndScheduledAtAfterOrderByScheduledAtAsc(
                 doctor.getId(), Status.PENDING, LocalDateTime.now(), pageable);
 
-        return ApiResponse.success("Doctor upcoming appointments", Map.of("appointments", result.getContent(), "page", result.getNumber(), "totalPages", result.getTotalPages()));
+        List<Appointment> sanitized = result.getContent().stream().map(this::sanitize).toList();
+
+        return ApiResponse.success("Doctor upcoming appointments", Map.of("appointments", sanitized, "page", result.getNumber(), "totalPages", result.getTotalPages()));
     }
 
     public ApiResponse<Object> getDoctorHistory(String doctorEmail, int page, int size) {
@@ -317,10 +324,12 @@ public class AppointmentService {
         if (doctor == null) return ApiResponse.error("Doctor not found");
 
         Pageable pageable = PageRequest.of(page, size);
-        Page<Appointment> result = appointmentRepository.findByDoctorIdAndStatusInOrderByScheduledAtDesc(
+        Page<Appointment> result = appointmentRepository.findByDoctor_IdAndStatusInOrderByScheduledAtDesc(
                 doctor.getId(), List.of(Status.RESOLVED, Status.CANCELLED, Status.OTP_LOCKED), pageable);
 
-        return ApiResponse.success("Doctor appointment history", Map.of("appointments", result.getContent(), "page", result.getNumber(), "totalPages", result.getTotalPages()));
+        List<Appointment> sanitized = result.getContent().stream().map(this::sanitize).toList();
+
+        return ApiResponse.success("Doctor appointment history", Map.of("appointments", sanitized, "page", result.getNumber(), "totalPages", result.getTotalPages()));
     }
 
     private LocalDate findNextAvailableDateForTime(Doctor doctor, LocalTime time) {
@@ -366,5 +375,63 @@ public class AppointmentService {
         try {
             return Long.parseLong(s);
         } catch (Exception e) { return null; }
+    }
+
+
+    private Appointment sanitize(Appointment src) {
+        if (src == null) return null;
+
+        Appointment safe = new Appointment();
+        safe.setId(src.getId());
+        safe.setScheduledAt(src.getScheduledAt());
+        safe.setDurationMinutes(src.getDurationMinutes());
+        safe.setStatus(src.getStatus());
+        safe.setMessage(src.getMessage());
+        safe.setCancelledBy(src.getCancelledBy());
+        safe.setCancelReason(src.getCancelReason());
+        safe.setResolvedBy(src.getResolvedBy());
+        safe.setResolvedAt(src.getResolvedAt());
+        safe.setCreatedAt(src.getCreatedAt());
+        safe.setUpdatedAt(src.getUpdatedAt());
+
+        Doctor doc = src.getDoctor();
+        if (doc != null) {
+            Doctor safeDoctor = new Doctor();
+            safeDoctor.setId(doc.getId());
+            safeDoctor.setFullname(doc.getFullname());
+            safeDoctor.setEmail(doc.getEmail());
+            safeDoctor.setPhoneNumber(doc.getPhoneNumber());
+            safeDoctor.setSpecialization(doc.getSpecialization());
+            safeDoctor.setClinicName(doc.getClinicName());
+            safeDoctor.setClinicAddress(doc.getClinicAddress());
+            safeDoctor.setCity(doc.getCity());
+            safeDoctor.setState(doc.getState());
+            safeDoctor.setAbout(doc.getAbout());
+            safeDoctor.setRegNumber(doc.getRegNumber());
+            safeDoctor.setProfileImageUrl(doc.getProfileImageUrl());
+            safeDoctor.setClinicOpenTime(doc.getClinicOpenTime());
+            safeDoctor.setClinicCloseTime(doc.getClinicCloseTime());
+            safeDoctor.setWorkingDays(doc.getWorkingDays());
+            safeDoctor.setVerified(doc.getVerified());
+            safeDoctor.setRole(doc.getRole());
+            safe.setDoctor(safeDoctor);
+        }
+
+        User pat = src.getPatient();
+        if (pat != null) {
+            User safePatient = new User();
+            safePatient.setId(pat.getId());
+            safePatient.setUserName(pat.getUserName());
+            safePatient.setEmail(pat.getEmail());
+            safePatient.setCity(pat.getCity());
+            safePatient.setState(pat.getState());
+            safePatient.setVerified(pat.isVerified());
+            safePatient.setRole(pat.getRole());
+            safePatient.setCreatedAt(pat.getCreatedAt());
+            safePatient.setUpdatedAt(pat.getUpdatedAt());
+            safe.setPatient(safePatient);
+        }
+
+        return safe;
     }
 }

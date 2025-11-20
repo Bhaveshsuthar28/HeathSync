@@ -7,6 +7,8 @@ import java.util.Set;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
@@ -26,6 +28,7 @@ import lombok.Setter;
 @Table(name = "Doctor")
 @Getter
 @Setter
+@JsonIgnoreProperties({"appointments"})
 public class Doctor {
     
     @Id

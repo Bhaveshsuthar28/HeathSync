@@ -1,15 +1,12 @@
 import React, { useContext } from "react";
 import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
 import { User2, Search, CalendarCheck, Clock4, LogOut, X } from "lucide-react";
-import { UserContext } from "../context/UserContext.context.jsx";
+import { DoctorContext } from "../context/DoctorContext.context.jsx";
 
 export default function Sidebar({ open, onClose, onNavigate }) {
-  const { user } = useContext(UserContext);
+  const { doctor } = useContext(DoctorContext);
 
-
-
-  const firstLetter = user?.userName?.trim()?.charAt(0)?.toUpperCase() || "U";
+  const firstLetter = doctor?.fullname?.trim()?.charAt(0)?.toUpperCase() || "D";
 
   return (
     <>
@@ -34,12 +31,13 @@ export default function Sidebar({ open, onClose, onNavigate }) {
             <div className="w-16 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center text-lg font-semibold">
               {firstLetter}
             </div>
-            <div className="overflow-hidden">
+
+            <div>
               <div className="text-sm font-semibold text-gray-800 truncate">
-                Hi , {user?.userName}
+                Hi , {doctor?.fullname}
               </div>
               <div className="text-xs text-gray-500 truncate">
-                {user?.email}
+                {doctor?.email}
               </div>
             </div>
           </div>
@@ -52,8 +50,6 @@ export default function Sidebar({ open, onClose, onNavigate }) {
 
         <nav className="p-4 flex flex-col gap-3">
           <SidebarItem icon={<User2 />} label="Profile" onClick={() => onNavigate("profile")} />
-          <SidebarItem icon={<Search />} label="Search Doctor" onClick={() => onNavigate("search")} />
-          <SidebarItem icon={<CalendarCheck />} label="Appointments" onClick={() => onNavigate("appointments")} />
           <SidebarItem icon={<Clock4 />} label="History" onClick={() => onNavigate("history")} />
           <SidebarItem icon={<LogOut />} label="Logout" onClick={() => onNavigate("logout")} />
         </nav>
@@ -71,3 +67,4 @@ function SidebarItem({ icon, label, onClick }) {
     </button>
   );
 }
+

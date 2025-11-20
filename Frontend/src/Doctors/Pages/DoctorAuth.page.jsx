@@ -9,8 +9,11 @@ import DoctorVerifyOTP from "../Components/Verifyotp.components.jsx";
 import logo from "../../assets/Logo.png";
 import doctorImg from "../../assets/doctor.png";
 import { useNavigate } from "react-router-dom";
+import { SPECIALIZATIONS } from "../../Spec.jsx";
+import TitleChanger from "../../title.jsx";
 
 export const DoctorAuth = () => {
+  TitleChanger("Authantication");
   const [state, setState] = useState("signup");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -102,7 +105,7 @@ export const DoctorAuth = () => {
       );
       if (res.data?.status === "success") {
         const token = res.data?.data?.token;
-        localStorage.setItem("token", token);
+        localStorage.setItem("doctorToken", token);
         toast.success("Login successful");
         setTimeout(() => {
           navigate("/doctor-home");
@@ -246,22 +249,33 @@ export const DoctorAuth = () => {
                           </div>
 
                           <div className="relative">
-                            <input
+                            <select
                               name="specialization"
                               id="specialization"
                               value={form.specialization}
                               onChange={handleForm}
-                              className="peer w-full px-3 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600 placeholder-transparent"
-                              placeholder="Specialization"
+                              className="peer w-full px-3 py-3 border border-gray-300 rounded-md 
+                                        bg-white focus:outline-none focus:ring-2 focus:ring-blue-600"
                               required
-                            />
+                            >
+                              <option value="">Select Specialization</option>
+
+                              {SPECIALIZATIONS.map((spec) => (
+                                <option key={spec} value={spec}>
+                                  {spec}
+                                </option>
+                              ))}
+                            </select>
+
                             <label
                               htmlFor="specialization"
-                              className="absolute left-3 -top-2.5 px-1 bg-white text-sm text-gray-600 transition-all peer-placeholder-shown:top-3 peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-focus:-top-2.5 peer-focus:text-sm peer-focus:text-blue-600"
+                              className="absolute left-3 -top-2.5 px-1 bg-white text-sm text-gray-600
+                                        transition-all peer-focus:text-blue-600"
                             >
                               Specialization
                             </label>
                           </div>
+
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

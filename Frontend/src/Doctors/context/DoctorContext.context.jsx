@@ -9,7 +9,7 @@ export const DoctorProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("doctorToken");
     if (!token) {
       setLoading(false);
       return;

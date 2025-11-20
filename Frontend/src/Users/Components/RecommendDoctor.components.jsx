@@ -1,69 +1,34 @@
-// src/components/RecommendedSlider.jsx
-import React, { useEffect, useState, useRef } from "react";
-import axios from "axios";
+import React, { useRef } from "react";
 import { motion } from "framer-motion";
 import DoctorCard from "./DoctorCard.component.jsx";
 import DoctorCardSkeleton from "./DoctorCardLoader.component.jsx";
 
-export default function RecommendedSlider({ fetchUrl, params = {}, limit = 6 }) {
-  const [doctors, setDoctors] = useState([]);
-  const [loading, setLoading] = useState(false);
+export default function RecommendedSlider({ doctors, onOpenDoctor }) {
   const containerRef = useRef(null);
-
-  useEffect(() => {
-    fetchDoctors();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetchUrl, JSON.stringify(params)]);
-
-  async function fetchDoctors() {
-    setLoading(true);
-    try {
-      const token = localStorage.getItem("token");
-      const res = await axios.get(fetchUrl, {
-        params: { ...params, page: 0, size: limit },
-        headers: {
-          Authorization: token ? `Bearer ${token}` : "",
-        },
-      });
-
-      const docs = res.data?.data?.doctors ?? res.data?.data ?? [];
-      setDoctors(docs);
-    } catch (err) {
-      console.error("Failed fetching doctors", err);
-      setDoctors([]);
-    } finally {
-      setLoading(false);
-    }
-  }
 
   return (
     <section className="mb-6">
       <div
         ref={containerRef}
         className="flex gap-4 overflow-x-auto scrollbar-hide py-2 px-1"
-        style={{ scrollBehavior: "smooth" }}
       >
-        {loading ? (
+        {!doctors || doctors.length === 0 ? (
           <div className="flex gap-4">
-            {[1, 2, 3, 4 , 5 , 6].map((i) => (
+            {[...Array(6)].map((_, i) => (
               <DoctorCardSkeleton key={i} />
             ))}
           </div>
-        ) : doctors.length === 0 ? (
-          <div className="text-sm text-gray-500 p-4">No doctors found.</div>
         ) : (
-          doctors.map((d) => (
+          doctors.map((doc) => (
             <motion.div
-              key={d.id}
+              key={doc.id}
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.25 }}
             >
-              <DoctorCard doctor={d} />
+              <DoctorCard doctor={doc} onOpenDoctor={onOpenDoctor} />
             </motion.div>
           ))
         )}
-
       </div>
     </section>
   );

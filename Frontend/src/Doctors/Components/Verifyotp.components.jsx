@@ -52,7 +52,7 @@ export const DoctorVerifyOTP = ({ email, onBack }) => {
         { email, otp }
       );
       if (res.data?.data?.token) {
-        localStorage.setItem("token", res.data.data.token);
+        localStorage.setItem("doctorToken", res.data.data.token);
         toast.success("Doctor registered and verified!");
         setTimeout(() => navigate("/doctor-home"), 1200);
       } else {

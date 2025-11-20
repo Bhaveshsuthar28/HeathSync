@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.Heath.Backend.Models.User;
-import com.Heath.Backend.Repository.UserRepository;
+import com.Heath.Backend.Repository.UserRepository; 
 import com.Heath.Backend.Utils.ApiResponse;
 import com.Heath.Backend.Utils.JwtUtil;
 import com.Heath.Backend.service.DoctorService;

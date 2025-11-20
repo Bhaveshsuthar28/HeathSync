@@ -51,7 +51,7 @@ export const OtpVerify = ({ onBack, email }) => {
         { email, otp }
       );
       if (response.data.data?.token) {
-        localStorage.setItem("token", response.data.data.token);
+        localStorage.setItem("userToken", response.data.data.token);
         toast.success("Email verified successfully!");
         setTimeout(() => navigate("/user-home"), 1500);
       } else {

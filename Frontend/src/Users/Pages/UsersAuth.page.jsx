@@ -7,8 +7,10 @@ import axios from "axios";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import {useNavigate} from "react-router-dom"
+import TitleChanger from "../../title.jsx";
 
 export const UserAuth = () => {
+  TitleChanger("Authantication");
   const [state, setState] = useState("signup");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -48,7 +50,7 @@ export const UserAuth = () => {
         );
         if (response.data.status === "success") {
           const token = response.data?.data?.token;
-          localStorage.setItem("token", token);
+          localStorage.setItem("userToken", token);
           toast.success("Login successful!");
           setTimeout(() => {
             navigate("/user-home")

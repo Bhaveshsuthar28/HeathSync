@@ -5,9 +5,11 @@ import logo from "../assets/Logo.png";
 import doctorImg from "../assets/doctor.png";
 import patientImg from "../assets/patient.png";
 import adminImg from "../assets/admin.png"; // <-- Add an admin image in your assets folder
+import TitleChanger from "../title";
 
 export const Start = () => {
   const navigate = useNavigate();
+  TitleChanger("Start Here")
 
   return (
     <main className="h-screen flex flex-col items-center justify-center bg-white text-gray-800 px-6 py-12 relative overflow-hidden">
@@ -34,12 +36,10 @@ export const Start = () => {
           — anytime, anywhere.
         </p>
       </div>
-
-      {/* Choice Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-12 z-10">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-12 z-10">
         {/* Doctor Card */}
         <div
-          onClick={() => navigate("/doctor-auth")}
+          
           className="cursor-pointer bg-white rounded-2xl border-2 border-blue-600 p-6 flex flex-col items-center justify-between transition"
         >
           <img
@@ -54,14 +54,16 @@ export const Start = () => {
             Join our network of trusted doctors and manage your appointments
             efficiently.
           </p>
-          <button className="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition">
+          <button 
+          onClick={() => navigate("/doctor-auth")}
+          className="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition">
             Join as Doctor
           </button>
         </div>
 
         {/* Patient Card */}
         <div
-          onClick={() => navigate("/user-auth")}
+          
           className="cursor-pointer bg-white rounded-2xl border-2 border-blue-600 p-6 flex flex-col items-center justify-between transition"
         >
           <img
@@ -76,30 +78,8 @@ export const Start = () => {
             Find the right doctor, book appointments, and manage your medical
             records with ease.
           </p>
-          <button className="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition">
+          <button onClick={() => navigate("/user-auth")} className="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition">
             Continue as Patient
-          </button>
-        </div>
-
-        {/* Admin Card */}
-        <div
-          onClick={() => navigate("/admin-auth")}
-          className="cursor-pointer bg-white rounded-2xl border-2 border-blue-600 p-6 flex flex-col items-center justify-between transition"
-        >
-          <img
-            src={adminImg}
-            alt="Admin"
-            className="w-36 h-36 object-contain mb-4"
-          />
-          <h2 className="text-xl font-semibold text-blue-700 mb-2">
-            Admin Portal
-          </h2>
-          <p className="text-gray-600 text-sm text-center mb-4">
-            Manage users, doctors, and appointments with full control and
-            analytics.
-          </p>
-          <button className="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition">
-            Go to Admin
           </button>
         </div>
       </div>

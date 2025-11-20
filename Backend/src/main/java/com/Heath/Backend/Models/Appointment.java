@@ -2,15 +2,14 @@ package com.Heath.Backend.Models;
 
 import java.time.LocalDateTime;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
 @Entity
-@Table(name = "appointments", indexes = {
-    @Index(name = "idx_doctor_scheduled", columnList = "doctor_id, scheduled_at"),
-    @Index(name = "idx_patient_status", columnList = "patient_id, status")
-})
+@Table(name = "appointments")
 @Getter
 @Setter
 public class Appointment {
@@ -23,11 +22,15 @@ public class Appointment {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "patient_id", nullable = false)
-    private Long patientId;
+    @ManyToOne
+    @JoinColumn(name = "doctor_id" , referencedColumnName = "id")
+    @JsonIgnoreProperties({"appointments"})
+    private Doctor doctor;
 
-    @Column(name = "doctor_id", nullable = false)
-    private Long doctorId;
+    @ManyToOne
+    @JoinColumn(name = "patient_id" , referencedColumnName = "id")
+    @JsonIgnoreProperties({"appointments"})
+    private User patient;
 
     @Column(name = "scheduled_at", nullable = false)
     private LocalDateTime scheduledAt;
