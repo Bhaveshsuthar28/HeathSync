@@ -4,7 +4,6 @@ import { useNavigate } from "react-router-dom";
 import logo from "../assets/Logo.png";
 import doctorImg from "../assets/doctor.png";
 import patientImg from "../assets/patient.png";
-import adminImg from "../assets/admin.png"; // <-- Add an admin image in your assets folder
 import TitleChanger from "../title";
 
 export const Start = () => {
@@ -13,7 +12,6 @@ export const Start = () => {
 
   return (
     <main className="h-screen flex flex-col items-center justify-center bg-white text-gray-800 px-6 py-12 relative overflow-hidden">
-      {/* Background Decorative Circles */}
       <motion.div
         className="absolute w-72 h-72 bg-blue-100 rounded-full blur-3xl top-10 left-10 opacity-30"
         animate={{ scale: [1, 1.1, 1] }}
