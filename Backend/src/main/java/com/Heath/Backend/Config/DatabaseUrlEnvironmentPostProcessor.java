@@ -72,7 +72,9 @@ public class DatabaseUrlEnvironmentPostProcessor implements EnvironmentPostProce
 
     @Override
     public int getOrder() {
-        return Ordered.HIGHEST_PRECEDENCE;
+        // Run late so other property sources (e.g., spring-dotenv loading .env)
+        // have already populated DB_URL / DATABASE_URL, etc.
+        return Ordered.LOWEST_PRECEDENCE;
     }
 
     private static String firstNonBlank(ConfigurableEnvironment environment, String... keys) {
