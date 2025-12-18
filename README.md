@@ -8,7 +8,7 @@
 - **Runtime:** Docker (uses `Backend/Dockerfile`)
 
 #### Required Environment Variables (Render → Service → Environment)
-- `DB_URL` = `jdbc:mysql://<AIVEN_HOST>:<AIVEN_PORT>/<DB_NAME>?sslMode=REQUIRED`
+- `DB_URL` = `jdbc:mysql://mysql-1ddeed4-bhaveshsutharkulariya123456-87f3.b.aivencloud.com:23122/defaultdb?sslMode=REQUIRED`
 - `DB_USER` = your Aiven username
 - `DB_PASS` = your Aiven password
 - `JWT_SECRET`
