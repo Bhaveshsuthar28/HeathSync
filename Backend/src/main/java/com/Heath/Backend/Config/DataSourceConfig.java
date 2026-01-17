@@ -2,6 +2,8 @@ package com.Heath.Backend.Config;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.env.Environment;
@@ -14,9 +16,13 @@ import java.util.Locale;
 @Configuration
 public class DataSourceConfig {
 
+    private static final Logger log = LoggerFactory.getLogger(DataSourceConfig.class);
+
     @Bean
     public DataSource dataSource(Environment environment) {
         ResolvedDb resolved = resolveDatabase(environment);
+
+        log.info("Configuring datasource (jdbcUrl={})", redactJdbcUrl(resolved.jdbcUrl));
 
         HikariConfig config = new HikariConfig();
         config.setJdbcUrl(resolved.jdbcUrl);
@@ -124,7 +130,11 @@ public class DataSourceConfig {
     private static ParsedUrl parseUrl(String rawUrl) {
         String trimmed = rawUrl.trim();
         if (trimmed.startsWith("jdbc:")) {
-            return new ParsedUrl(trimmed, null, null);
+            // Some providers/users embed credentials like:
+            // jdbc:mysql://user:pass@host:port/db?ssl-mode=REQUIRED
+            // Normalize to a safe JDBC URL and extract username/password.
+            ParsedUrl normalized = tryNormalizeJdbcUrlWithUserInfo(trimmed);
+            return normalized != null ? normalized : new ParsedUrl(trimmed, null, null);
         }
 
         URI uri;
@@ -186,6 +196,90 @@ public class DataSourceConfig {
         }
 
         return new ParsedUrl(jdbc.toString(), username, password);
+    }
+
+    private static ParsedUrl tryNormalizeJdbcUrlWithUserInfo(String jdbcUrl) {
+        String trimmed = jdbcUrl.trim();
+        String withoutJdbcPrefix = trimmed.substring("jdbc:".length());
+
+        URI uri;
+        try {
+            uri = new URI(withoutJdbcPrefix);
+        } catch (URISyntaxException ex) {
+            return null;
+        }
+
+        String scheme = trimToNull(uri.getScheme());
+        if (scheme == null) {
+            return null;
+        }
+
+        // Only handle standard "driver://..." forms.
+        String driver = switch (scheme.toLowerCase(Locale.ROOT)) {
+            case "postgres", "postgresql" -> "postgresql";
+            case "mysql" -> "mysql";
+            case "mariadb" -> "mariadb";
+            default -> null;
+        };
+        if (driver == null) {
+            return null;
+        }
+
+        String host = trimToNull(uri.getHost());
+        if (host == null) {
+            return null;
+        }
+
+        String username = null;
+        String password = null;
+        String userInfo = trimToNull(uri.getUserInfo());
+        if (userInfo != null) {
+            int colon = userInfo.indexOf(':');
+            if (colon >= 0) {
+                username = userInfo.substring(0, colon);
+                password = userInfo.substring(colon + 1);
+            } else {
+                username = userInfo;
+            }
+        }
+
+        StringBuilder normalized = new StringBuilder();
+        normalized.append("jdbc:").append(driver).append("://").append(host);
+        if (uri.getPort() > 0) {
+            normalized.append(":").append(uri.getPort());
+        }
+
+        String path = uri.getRawPath();
+        if (path != null && !path.isBlank()) {
+            normalized.append(path);
+        }
+
+        String query = trimToNull(uri.getRawQuery());
+        if (query != null) {
+            String normalizedQuery = query.replace("ssl-mode=", "sslMode=");
+            normalized.append("?").append(normalizedQuery);
+        }
+
+        return new ParsedUrl(normalized.toString(), username, password);
+    }
+
+    private static String redactJdbcUrl(String jdbcUrl) {
+        String trimmed = trimToNull(jdbcUrl);
+        if (trimmed == null) {
+            return null;
+        }
+
+        // Best-effort redaction for accidental userinfo in JDBC URLs.
+        // Example: jdbc:mysql://user:pass@host:port/db -> jdbc:mysql://***@host:port/db
+        int schemeSep = trimmed.indexOf("://");
+        if (schemeSep < 0) {
+            return trimmed;
+        }
+        int at = trimmed.indexOf('@', schemeSep + 3);
+        if (at < 0) {
+            return trimmed;
+        }
+        return trimmed.substring(0, schemeSep + 3) + "***" + trimmed.substring(at);
     }
 
     private static String firstNonBlank(String... values) {
