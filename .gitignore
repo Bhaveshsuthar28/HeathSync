@@ -1,0 +1,20 @@
+/.vscode
+
+# Environment / secrets
+.env
+.env.*
+**/.env
+**/.env.*
+
+# Allow example env templates to be committed
+!.env.example
+!**/.env.example
+
+# Node
+node_modules/
+**/node_modules/
+dist/
+
+# Java / Maven
+**/target/
+*.log
