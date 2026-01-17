@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.Random;
 
 import org.springframework.mail.MailException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,9 +27,28 @@ public class UsersService {
     private final JwtUtil jwtUtil;
     private final EmailUtil emailUtil;
 
+    private static String normalizeEmail(String email) {
+        if (email == null) return null;
+        String normalized = email.trim().toLowerCase();
+        return normalized.isEmpty() ? null : normalized;
+    }
+
+    private static String normalizeUsername(String username) {
+        if (username == null) return null;
+        String normalized = username.trim();
+        return normalized.isEmpty() ? null : normalized;
+    }
+
     @Transactional(rollbackFor = Exception.class)
     public ApiResponse<Object> requestOtp(String username, String email, String password){
-        User existing = userRepository.findByEmail(email).orElse(null);
+        String normalizedEmail = normalizeEmail(email);
+        String normalizedUsername = normalizeUsername(username);
+
+        if (normalizedEmail == null) return ApiResponse.error("Email is required");
+        if (normalizedUsername == null) return ApiResponse.error("Username is required");
+        if (password == null || password.isBlank()) return ApiResponse.error("Password is required");
+
+        User existing = userRepository.findByEmail(normalizedEmail).orElse(null);
 
         if(existing != null && existing.isVerified()){
             return ApiResponse.error("User Already Exists");
@@ -38,29 +58,41 @@ public class UsersService {
         LocalDateTime expiry = LocalDateTime.now().plusMinutes(5);
 
         User user = existing != null ? existing : new User();
-        user.setUserName(username);
-        user.setEmail(email);
+        user.setUserName(normalizedUsername);
+        user.setEmail(normalizedEmail);
         user.setPassword(passwordEncoder.encode(password));
         user.setOtpCode(otp);
         user.setOtpExpiry(expiry);
         user.setOtpUsed(false);
         user.setVerified(false);
-        userRepository.save(user);
 
-        userRepository.save(user);
+        try {
+            userRepository.save(user);
+        } catch (DataIntegrityViolationException ex) {
+            if (userRepository.existsByEmail(normalizedEmail)) {
+                return ApiResponse.error("Email already registered");
+            }
+            if (userRepository.existsByUserName(normalizedUsername)) {
+                return ApiResponse.error("This name is already used");
+            }
+            throw ex;
+        }
         
         try {
-            emailUtil.sendOtpEmail(email, otp);
+            emailUtil.sendOtpEmail(normalizedEmail, otp);
         } catch (MailException e) {
             throw e;
         }
 
-        return ApiResponse.success("OTP sent successfully to " + email , null);
+        return ApiResponse.success("OTP sent successfully to " + normalizedEmail , null);
     }
 
 
     public ApiResponse<Object> Verification(String email , String otp){
-        User user = userRepository.findByEmail(email).orElse(null);
+        String normalizedEmail = normalizeEmail(email);
+        if (normalizedEmail == null) return ApiResponse.error("Email is required");
+
+        User user = userRepository.findByEmail(normalizedEmail).orElse(null);
 
         if(user == null) return ApiResponse.error("User not found");
 
@@ -78,7 +110,7 @@ public class UsersService {
         user.setOtpExpiry(null);
         userRepository.save(user);
 
-        String token = jwtUtil.generateToken(email);
+        String token = jwtUtil.generateToken(normalizedEmail);
         return ApiResponse.success("Registration successful",   new TokenResponse(token));
     }
 
@@ -90,7 +122,10 @@ public class UsersService {
     }
 
     public ApiResponse<Object> login(String email , String password){
-        User user = userRepository.findByEmail(email).orElse(null);
+        String normalizedEmail = normalizeEmail(email);
+        if (normalizedEmail == null) return ApiResponse.error("Email is required");
+
+        User user = userRepository.findByEmail(normalizedEmail).orElse(null);
 
         if (user == null)
             return ApiResponse.error("User not found");
@@ -101,13 +136,16 @@ public class UsersService {
         if (!passwordEncoder.matches(password, user.getPassword()))
             return ApiResponse.error("Invalid credentials");
 
-        String token = jwtUtil.generateToken(email);
+        String token = jwtUtil.generateToken(normalizedEmail);
 
         return ApiResponse.success("Login successful", Map.of("token", token));
     }
 
     public ApiResponse<Object> updateUserProfile(String email, Map<String, Object> payload){
-        User user = userRepository.findByEmail(email).orElse(null);
+        String normalizedEmail = normalizeEmail(email);
+        if (normalizedEmail == null) return ApiResponse.error("User not Found");
+
+        User user = userRepository.findByEmail(normalizedEmail).orElse(null);
         if(user == null) return ApiResponse.error("User not Found");
 
         String userName = (String) payload.get("userName");

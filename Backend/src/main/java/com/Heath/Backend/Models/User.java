@@ -15,12 +15,18 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.Setter;
 
 @Entity
-@Table(name = "users")
+@Table(
+    name = "users",
+    uniqueConstraints = {
+        @UniqueConstraint(name = "uk_users_email", columnNames = {"email"})
+    }
+)
 @Getter
 @Setter
 @JsonIgnoreProperties({"appointments"})
@@ -34,7 +40,7 @@ public class User {
     @NotBlank(message = "username is required")
     private String userName;
 
-    @Column(unique = true , nullable = false)
+    @Column(name = "email", unique = true , nullable = false)
     private String email;
 
     @Column(nullable = false)
