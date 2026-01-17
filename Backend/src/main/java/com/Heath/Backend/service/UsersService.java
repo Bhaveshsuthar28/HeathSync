@@ -4,8 +4,10 @@ import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Random;
 
+import org.springframework.mail.MailException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.Heath.Backend.Models.User;
 import com.Heath.Backend.Repository.UserRepository;
@@ -24,16 +26,18 @@ public class UsersService {
     private final JwtUtil jwtUtil;
     private final EmailUtil emailUtil;
 
+    @Transactional(rollbackFor = Exception.class)
     public ApiResponse<Object> requestOtp(String username, String email, String password){
+        User existing = userRepository.findByEmail(email).orElse(null);
 
-        if(userRepository.existsByEmail(email)){
+        if(existing != null && existing.isVerified()){
             return ApiResponse.error("User Already Exists");
         }
 
         String otp = String.valueOf(new Random().nextInt(900000) + 100000);
         LocalDateTime expiry = LocalDateTime.now().plusMinutes(5);
 
-        User user = new User();
+        User user = existing != null ? existing : new User();
         user.setUserName(username);
         user.setEmail(email);
         user.setPassword(passwordEncoder.encode(password));
@@ -43,7 +47,13 @@ public class UsersService {
         user.setVerified(false);
         userRepository.save(user);
 
-        emailUtil.sendOtpEmail(email, otp);
+        userRepository.save(user);
+        
+        try {
+            emailUtil.sendOtpEmail(email, otp);
+        } catch (MailException e) {
+            throw e;
+        }
 
         return ApiResponse.success("OTP sent successfully to " + email , null);
     }

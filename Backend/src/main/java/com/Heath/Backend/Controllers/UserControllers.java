@@ -4,6 +4,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.mail.MailException;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -37,12 +38,18 @@ public class UserControllers {
 
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<Object>> Userregister(@Valid @RequestBody Map<String , String> payload){
-        String username = payload.get("username");
-        String email = payload.get("email");
-        String password = payload.get("password");
+        try{
+            String username = payload.get("username");
+            String email = payload.get("email");
+            String password = payload.get("password");
 
-        ApiResponse<Object> response = usersService.requestOtp(username, email, password);
-        return ResponseEntity.ok(response);
+            ApiResponse<Object> response = usersService.requestOtp(username, email, password);
+            return ResponseEntity.ok(response);
+        }catch(MailException e){
+            return ResponseEntity.status(502).body(ApiResponse.error("Failed to send OTP email. Please try again."));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(ApiResponse.error("Something went wrong"));
+        }
     }
 
     @PostMapping("/verify-otp")
